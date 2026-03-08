@@ -22,7 +22,6 @@
     <Folder Include="Controllers\" />
     <Folder Include="Data\" />
     <Folder Include="Data\DTOs\" />
-    <Folder Include="Exceptions\" />
     <Folder Include="Models\" />
     <Folder Include="Services\" />
   </ItemGroup>

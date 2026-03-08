@@ -13,19 +13,7 @@ namespace AppointmentScheduler.Controllers
         [HttpPost("signup")] 
         public async Task<IActionResult> Signup(SignupRequest request)
         {
-            string token;
-            try
-            {
-                token = await service.Signup(request);
-            }
-            catch(BadRequestException ex)
-            {
-                return BadRequest(ex.Message);
-            }
-            catch (ConflictException ex)
-            {
-                return Conflict(ex.Message);
-            }
+            string token = await service.Signup(request);
             return Ok(token);
         }
     }

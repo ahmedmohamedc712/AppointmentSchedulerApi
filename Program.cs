@@ -1,5 +1,6 @@
 using System.Text;
 using AppointmentScheduler.Data;
+using AppointmentScheduler.Exceptions;
 using AppointmentScheduler.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -45,6 +46,8 @@ if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
 }
+
+app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 app.UseHttpsRedirection();
 
