@@ -16,5 +16,12 @@ namespace AppointmentScheduler.Controllers
             string token = await service.Signup(request);
             return Ok(token);
         }
+
+        [HttpPost("login")]
+        public async Task<IActionResult> Login(LoginRequest request)
+        {
+            string token = await service.Login(request);
+            return Ok(token);
+        }
     }
 }

@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.CompilerServices;
 using AppointmentScheduler.Data;
 using AppointmentScheduler.Data.DTOs;
 using AppointmentScheduler.Exceptions;
@@ -12,6 +13,10 @@ public class UsersService(AppDbContext context, IPasswordHasher passwordHasher, 
 {
     public async Task<string> Signup(SignupRequest request)
     {
+        var isValidEmail = IsValidEmail(request.Email);
+        if(!isValidEmail)
+            throw new BadRequestException("Invalid Email format.");  
+        
         if(request.Password != request.ConfirmPassword)
             throw new BadRequestException("Confirm password must match the password.");
 
@@ -31,5 +36,33 @@ public class UsersService(AppDbContext context, IPasswordHasher passwordHasher, 
         await context.SaveChangesAsync();
 
         return jwtProvider.Create(user);
+    }
+    public async Task<string> Login(LoginRequest request)
+    {
+        var isValidEmail = IsValidEmail(request.Email);
+        if(!isValidEmail)
+            throw new BadRequestException("Invalid Email format.");
+        
+        var user = await context.Users.FirstOrDefaultAsync(x => x.Email == request.Email);
+        if(user == null || !passwordHasher.VerifyPassword(user.PasswordHashed, request.Password))
+        {
+            throw new BadRequestException("Invalid Credentials.");
+        }
+
+        return jwtProvider.Create(user);
+    }
+
+    private bool IsValidEmail(string email)
+    {
+        if (string.IsNullOrWhiteSpace(email)) return false;
+        try
+        {
+            var addr = new System.Net.Mail.MailAddress(email);
+            return addr.Address == email;
+        }
+        catch
+        {
+            return false;
+        }
     }
 }

@@ -7,4 +7,5 @@ namespace AppointmentScheduler.Services;
 public interface IUsersService
 {
     Task<string> Signup(SignupRequest request);
+    Task<string> Login(LoginRequest request);
 }
