@@ -9,4 +9,5 @@ public class User
     public string Email { get; set; } = string.Empty;
     public string PasswordHashed { get; set; } = string.Empty;
     public ICollection<Appointment> Appointments { get; set; } = new List<Appointment>();
+    public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
 }

@@ -1,17 +1,22 @@
 using System;
 using System.Runtime.CompilerServices;
+using System.Security.Claims;
 using AppointmentScheduler.Data;
 using AppointmentScheduler.Data.DTOs;
 using AppointmentScheduler.Exceptions;
 using AppointmentScheduler.Models;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
+using static AppointmentScheduler.Controllers.UsersController;
 
 namespace AppointmentScheduler.Services;
 
-public class UsersService(AppDbContext context, IPasswordHasher passwordHasher, IJwtProvider jwtProvider) : IUsersService
+public class UsersService(AppDbContext context,
+    IPasswordHasher passwordHasher,
+    IJwtProvider jwtProvider,
+    IHttpContextAccessor httpContextAccessor) : IUsersService
 {
-    public async Task<string> Signup(SignupRequest request)
+    public async Task<Response> Signup(SignupRequest request)
     {
         var isValidEmail = IsValidEmail(request.Email);
         if(!isValidEmail)
@@ -33,11 +38,23 @@ public class UsersService(AppDbContext context, IPasswordHasher passwordHasher, 
             PasswordHashed = hashedPassword
         };  
         await context.Users.AddAsync(user);
+
+        var jwtToken = jwtProvider.Create(user);
+        var refreshToken = jwtProvider.GenerateRefreshToken();
+
+        var refreshTokenObj = new RefreshToken()
+        {
+            Token = refreshToken,
+            Expires = DateTime.UtcNow.AddDays(7),
+            User = user
+        };
+
+        await context.RefreshTokens.AddAsync(refreshTokenObj);
         await context.SaveChangesAsync();
 
-        return jwtProvider.Create(user);
+        return new Response(jwtToken, refreshToken);
     }
-    public async Task<string> Login(LoginRequest request)
+    public async Task<Response> Login(LoginRequest request)
     {
         var isValidEmail = IsValidEmail(request.Email);
         if(!isValidEmail)
@@ -49,9 +66,56 @@ public class UsersService(AppDbContext context, IPasswordHasher passwordHasher, 
             throw new BadRequestException("Invalid Credentials.");
         }
 
-        return jwtProvider.Create(user);
+        var jwtToken = jwtProvider.Create(user);
+        var refreshToken = jwtProvider.GenerateRefreshToken();
+
+        var refreshTokenObj = new RefreshToken()
+        {
+            Token = refreshToken,
+            Expires = DateTime.UtcNow.AddDays(7),
+            User = user
+        };
+
+        await context.RefreshTokens.AddAsync(refreshTokenObj);
+        await context.SaveChangesAsync();
+
+        return new Response(jwtToken, refreshToken);
     }
 
+    public async Task<Response> LoginUserWithRefreshToken(string refreshToken)
+    {
+        var refreshTokenObj = await context.RefreshTokens
+            .Include(x => x.User)
+            .FirstOrDefaultAsync(x => x.Token == refreshToken);
+
+        if (refreshTokenObj == null || refreshTokenObj.Expires < DateTime.UtcNow)
+        {
+            throw new BadRequestException("Refresh token has expired.");
+        }
+        var accessToken = jwtProvider.Create(refreshTokenObj.User);
+
+        refreshTokenObj.Token = jwtProvider.GenerateRefreshToken();
+        refreshTokenObj.Expires = DateTime.UtcNow.AddDays(7);
+
+        await context.SaveChangesAsync();
+
+        return new Response(accessToken, refreshTokenObj.Token);
+    }
+    public async Task RevokeRefreshTokens(int userId)
+    {
+        if(userId != GetCurrentUserId())
+        {
+            throw new BadRequestException("You can't do this.");
+        }
+        await context.RefreshTokens
+            .Where(x => x.UserId == userId)
+            .ExecuteDeleteAsync();
+    }
+    private int GetCurrentUserId()
+    {
+        int userId = int.Parse(httpContextAccessor.HttpContext?.User.FindFirst(ClaimTypes.NameIdentifier)!.Value!);
+        return userId;
+    }
     private bool IsValidEmail(string email)
     {
         if (string.IsNullOrWhiteSpace(email)) return false;

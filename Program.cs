@@ -39,6 +39,7 @@ builder.Services.AddAuthentication()
 
 builder.Services.AddScoped<IUsersService, UsersService>();
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
+builder.Services.AddHttpContextAccessor();
 
 var app = builder.Build();
 
