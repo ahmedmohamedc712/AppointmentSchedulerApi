@@ -14,7 +14,7 @@ namespace AppointmentScheduler.Services;
 public class UsersService(AppDbContext context,
     IPasswordHasher passwordHasher,
     IJwtProvider jwtProvider,
-    IHttpContextAccessor httpContextAccessor) : IUsersService
+    ICurrentUserAccessor currentUserAccessor) : IUsersService
 {
     public async Task<Response> Signup(SignupRequest request)
     {
@@ -103,18 +103,13 @@ public class UsersService(AppDbContext context,
     }
     public async Task RevokeRefreshTokens(int userId)
     {
-        if(userId != GetCurrentUserId())
+        if(userId != currentUserAccessor.GetCurrentUserId())
         {
             throw new BadRequestException("You can't do this.");
         }
         await context.RefreshTokens
             .Where(x => x.UserId == userId)
             .ExecuteDeleteAsync();
-    }
-    private int GetCurrentUserId()
-    {
-        int userId = int.Parse(httpContextAccessor.HttpContext?.User.FindFirst(ClaimTypes.NameIdentifier)!.Value!);
-        return userId;
     }
     private bool IsValidEmail(string email)
     {
