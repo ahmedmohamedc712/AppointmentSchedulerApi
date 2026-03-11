@@ -6,5 +6,5 @@ public interface ICurrentUserAccessor
 {
     int GetCurrentUserId();
     string GetCurrentUserEmail();
-    string? GetCurrentUserName();
+    string GetCurrentUserName();
 }

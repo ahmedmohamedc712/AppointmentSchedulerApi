@@ -51,7 +51,7 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IAppointmentService, AppointmentService>();
 builder.Services.AddScoped<ICurrentUserAccessor, CurrentUserAccessor>();
 builder.Services.AddSingleton<IUtcLocalConverter, UtcLocalConverter>();
-
+builder.Services.AddSingleton<IBackgroundJobProvider, BackgroundJobProvider>();
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())

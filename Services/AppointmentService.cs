@@ -13,7 +13,7 @@ namespace AppointmentScheduler.Services;
 public class AppointmentService(AppDbContext context,
     ICurrentUserAccessor currentUserAccessor,
     IUtcLocalConverter utcLocalConverter,
-    ISchedulerFactory schedulerFactory) : IAppointmentService
+    IBackgroundJobProvider jobProvider) : IAppointmentService
 {
     public async Task Create(CreateAppointmentRequest request)
     {
@@ -55,37 +55,13 @@ public class AppointmentService(AppDbContext context,
         await context.Appointments.AddAsync(appointment);
         await context.SaveChangesAsync();
 
-        var scheduler = await schedulerFactory.GetScheduler();
-
-        var remainderJob = JobBuilder.Create<AppointmentReminderJob>()
-            .WithIdentity($"appointmentReminder-{appointment.Id}")
-            .UsingJobData("AppointmentTitle", appointment.Title)
-            .UsingJobData("AppointmentDescription", appointment.Description)
-            .UsingJobData("AppointmentDate", $"{appointment.Date}")
-            .UsingJobData("UserEmail", currentUserAccessor.GetCurrentUserEmail())
-            .UsingJobData("UserName", currentUserAccessor.GetCurrentUserName())
-            .Build();
-
-        var remainderTrigger = TriggerBuilder.Create()
-            .WithIdentity($"appointmentReminder-trigger-{appointment.Id}")
-            .StartAt(appointment.ReminderDate.ToDateTimeOffset())
-            .Build();
-
-        await scheduler.ScheduleJob(remainderJob, remainderTrigger);
+        await jobProvider.CreateReminderJob(appointment,
+            currentUserAccessor.GetCurrentUserEmail(),
+            currentUserAccessor.GetCurrentUserName());
 
         if (request.WantAutoDelete)
         {
-            var removingJob = JobBuilder.Create<AppointmentRemovingJob>()
-            .WithIdentity($"appointmentRemoving-{appointment.Id}")
-            .UsingJobData("AppointmentId", appointment.Id)
-            .Build();
-
-            var removingTrigger = TriggerBuilder.Create()
-                .WithIdentity($"appointmentRemoving-trigger-{appointment.Id}")
-                .StartAt(appointment.Date.ToDateTimeOffset())
-                .Build();
-
-            await scheduler.ScheduleJob(removingJob, removingTrigger);
+            await jobProvider.CreateRemoverJob(appointment);
         }
     }
 }
