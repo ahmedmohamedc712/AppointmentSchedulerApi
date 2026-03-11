@@ -76,6 +76,7 @@ public class AppointmentService(AppDbContext context,
 
         IEnumerable<ReadAppointmentDto> readAppointmentDtos = appointments.Select(x => 
         new ReadAppointmentDto(
+            x.Id,
             x.Title,
             x.Description,
             utcLocalConverter.ConvertUtcToLocal(x.CreatedAt, userTimeZone),
@@ -97,6 +98,7 @@ public class AppointmentService(AppDbContext context,
             throw new NotFoundException(id);
         
         return new ReadAppointmentDto(
+            appointment.Id,
             appointment.Title,
             appointment.Description,
             utcLocalConverter.ConvertUtcToLocal(appointment.CreatedAt, userTimeZone),
