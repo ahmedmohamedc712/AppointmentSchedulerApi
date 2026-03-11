@@ -40,6 +40,16 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             .HasConversion(instantConverter)
             .HasColumnType("datetime2");
 
+        modelBuilder.Entity<Appointment>()
+            .Property(x => x.CreatedAt)
+            .HasConversion(instantConverter)
+            .HasColumnType("datetime2");
+
+        modelBuilder.Entity<Appointment>()
+            .Property(x => x.UpdatedAt)
+            .HasConversion(instantConverter)
+            .HasColumnType("datetime2");
+
         modelBuilder.Entity<User>()
             .HasMany(x => x.RefreshTokens)
             .WithOne(x => x.User)

@@ -47,6 +47,7 @@ public class AppointmentService(AppDbContext context,
         {
             Title = request.Title,
             Description = request.Description,
+            CreatedAt = currentUtc,
             Date = appointmentDate,
             ReminderDate = appointmentReminder,
             UserId = userId
