@@ -17,5 +17,12 @@ namespace AppointmentScheduler.Controllers
             await service.Create(request);
             return Created();
         }
+
+        [HttpGet]
+        public async Task<ActionResult<IEnumerable<ReadAppointmentDto>>> Get([FromHeader(Name = "X-TimeZone")] string userZone)
+        {
+            var appointments = await service.Get(userZone);
+            return Ok(appointments);
+        }
     }
 }

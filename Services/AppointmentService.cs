@@ -4,6 +4,7 @@ using AppointmentScheduler.Data;
 using AppointmentScheduler.Data.DTOs;
 using AppointmentScheduler.Exceptions;
 using AppointmentScheduler.Models;
+using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using Quartz;
 using TaskScheduler.Services;
@@ -64,5 +65,25 @@ public class AppointmentService(AppDbContext context,
         {
             await jobProvider.CreateRemoverJob(appointment);
         }
+    }
+
+    public async Task<IEnumerable<ReadAppointmentDto>> Get(string userZone)
+    {
+        int userId = currentUserAccessor.GetCurrentUserId();
+        var appointments = await context.Appointments
+            .Where(x => x.UserId == userId)
+            .ToListAsync();
+
+        IEnumerable<ReadAppointmentDto> readAppointmentDtos = appointments.Select(x => 
+        new ReadAppointmentDto(
+            x.Title,
+            x.Description,
+            utcLocalConverter.ConvertUtcToLocal(x.CreatedAt, userZone),
+            utcLocalConverter.ConvertUtcToLocal(x.Date, userZone),
+            utcLocalConverter.ConvertUtcToLocal(x.ReminderDate, userZone)
+            )
+        );
+
+        return readAppointmentDtos;
     }
 }
