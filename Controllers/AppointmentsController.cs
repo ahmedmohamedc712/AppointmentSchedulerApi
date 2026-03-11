@@ -11,17 +11,20 @@ namespace AppointmentScheduler.Controllers
     [Authorize]
     public class AppointmentsController(IAppointmentService service) : ControllerBase
     {
+        public const string TIME_ZONE_HEADER = "X-TimeZone" ;
         [HttpPost]
-        public async Task<IActionResult> Create(CreateAppointmentRequest request)
+        public async Task<IActionResult> Create(
+            CreateAppointmentRequest request,
+            [FromHeader(Name = TIME_ZONE_HEADER)] string userTimeZone)
         {
-            await service.Create(request);
+            await service.Create(request, userTimeZone);
             return Created();
         }
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<ReadAppointmentDto>>> Get([FromHeader(Name = "X-TimeZone")] string userZone)
+        public async Task<ActionResult<IEnumerable<ReadAppointmentDto>>> Get([FromHeader(Name = TIME_ZONE_HEADER)] string userTimeZone)
         {
-            var appointments = await service.Get(userZone);
+            var appointments = await service.Get(userTimeZone);
             return Ok(appointments);
         }
     }

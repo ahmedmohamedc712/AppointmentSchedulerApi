@@ -16,7 +16,7 @@ public class AppointmentService(AppDbContext context,
     IUtcLocalConverter utcLocalConverter,
     IBackgroundJobProvider jobProvider) : IAppointmentService
 {
-    public async Task Create(CreateAppointmentRequest request)
+    public async Task Create(CreateAppointmentRequest request, string userTimeZone)
     {
         if (string.IsNullOrWhiteSpace(request.Title) || string.IsNullOrWhiteSpace(request.Description))
         {
@@ -25,13 +25,13 @@ public class AppointmentService(AppDbContext context,
 
         var systemClock = SystemClock.Instance;
         var currentUtc = systemClock.GetCurrentInstant();
-        Instant appointmentDate = utcLocalConverter.ConvertLocalToUtc(request.Date, request.UserTimeZone);
+        Instant appointmentDate = utcLocalConverter.ConvertLocalToUtc(request.Date, userTimeZone);
         if (appointmentDate <= currentUtc)
         {
             throw new BadRequestException("Appointment date must be in the future.");
         }
 
-        Instant appointmentReminder = utcLocalConverter.ConvertLocalToUtc(request.ReminderDate, request.UserTimeZone);
+        Instant appointmentReminder = utcLocalConverter.ConvertLocalToUtc(request.ReminderDate, userTimeZone);
         if (appointmentReminder <= currentUtc)
         {
             throw new BadRequestException("Reminder date must be in the future.");
@@ -67,7 +67,7 @@ public class AppointmentService(AppDbContext context,
         }
     }
 
-    public async Task<IEnumerable<ReadAppointmentDto>> Get(string userZone)
+    public async Task<IEnumerable<ReadAppointmentDto>> Get(string userTimeZone)
     {
         int userId = currentUserAccessor.GetCurrentUserId();
         var appointments = await context.Appointments
@@ -78,9 +78,9 @@ public class AppointmentService(AppDbContext context,
         new ReadAppointmentDto(
             x.Title,
             x.Description,
-            utcLocalConverter.ConvertUtcToLocal(x.CreatedAt, userZone),
-            utcLocalConverter.ConvertUtcToLocal(x.Date, userZone),
-            utcLocalConverter.ConvertUtcToLocal(x.ReminderDate, userZone)
+            utcLocalConverter.ConvertUtcToLocal(x.CreatedAt, userTimeZone),
+            utcLocalConverter.ConvertUtcToLocal(x.Date, userTimeZone),
+            utcLocalConverter.ConvertUtcToLocal(x.ReminderDate, userTimeZone)
             )
         );
 
