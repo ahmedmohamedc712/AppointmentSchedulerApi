@@ -22,10 +22,22 @@ namespace AppointmentScheduler.Controllers
         }
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<ReadAppointmentDto>>> Get([FromHeader(Name = TIME_ZONE_HEADER)] string userTimeZone)
+        public async Task<ActionResult<IEnumerable<ReadAppointmentDto>>> Get(
+            [FromHeader(Name = TIME_ZONE_HEADER)] string userTimeZone
+        )
         {
             var appointments = await service.Get(userTimeZone);
             return Ok(appointments);
+        }
+
+        [HttpGet("{id}")]
+        public async Task<ActionResult<IEnumerable<ReadAppointmentDto>>> GetById(
+            int id,
+            [FromHeader(Name = TIME_ZONE_HEADER)] string userTimeZone
+        )
+        {
+            var appointmentDto = await service.GetById(id, userTimeZone);
+            return Ok(appointmentDto);
         }
     }
 }

@@ -15,6 +15,10 @@ public class ExceptionHandlingMiddleware(RequestDelegate next)
         {
             await WriteProperProblemDetails(context, StatusCodes.Status400BadRequest, ex.Message);
         }
+        catch(NotFoundException ex)
+        {
+            await WriteProperProblemDetails(context, StatusCodes.Status404NotFound, ex.Message);
+        }
         catch(ConflictException ex)
         {
             await WriteProperProblemDetails(context, StatusCodes.Status409Conflict, ex.Message);

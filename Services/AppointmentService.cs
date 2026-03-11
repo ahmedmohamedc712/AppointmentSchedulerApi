@@ -86,4 +86,22 @@ public class AppointmentService(AppDbContext context,
 
         return readAppointmentDtos;
     }
+
+    public async Task<ReadAppointmentDto> GetById(int id, string userTimeZone)
+    {
+        int userId = currentUserAccessor.GetCurrentUserId();
+        var appointment = await context.Appointments
+            .FirstOrDefaultAsync(x => x.Id == id && x.UserId == userId);
+        
+        if(appointment == null)
+            throw new NotFoundException(id);
+        
+        return new ReadAppointmentDto(
+            appointment.Title,
+            appointment.Description,
+            utcLocalConverter.ConvertUtcToLocal(appointment.CreatedAt, userTimeZone),
+            utcLocalConverter.ConvertUtcToLocal(appointment.Date, userTimeZone),
+            utcLocalConverter.ConvertUtcToLocal(appointment.ReminderDate, userTimeZone)
+        );
+    }
 }
