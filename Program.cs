@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using NodaTime;
 using Quartz;
 using TaskScheduler.Services;
 
@@ -52,6 +53,7 @@ builder.Services.AddScoped<IAppointmentService, AppointmentService>();
 builder.Services.AddScoped<ICurrentUserAccessor, CurrentUserAccessor>();
 builder.Services.AddSingleton<IUtcLocalConverter, UtcLocalConverter>();
 builder.Services.AddSingleton<IBackgroundJobProvider, BackgroundJobProvider>();
+builder.Services.AddSingleton<IClock>(NodaTime.SystemClock.Instance);
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())

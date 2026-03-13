@@ -46,6 +46,28 @@ public class BackgroundJobProvider(ISchedulerFactory schedulerFactory) : IBackgr
         await scheduler.ScheduleJob(removingJob, removingTrigger);
     }
 
+    public async Task DeleteJobs(int appointmentId)
+    {
+        var scheduler = await GetScheduler();
+
+        JobKey jobKey = new JobKey($"appointmentReminder-{appointmentId}");
+        await scheduler.DeleteJob(jobKey);
+
+        jobKey = new JobKey($"appointmentRemoving-{appointmentId}");
+        await scheduler.DeleteJob(jobKey);
+    }
+
+    public async Task RescheduleAppointmentsJobs(Appointment appointmentToUpdate, string userEmail, string userName, bool wantAutoDelete)
+    {
+        await DeleteJobs(appointmentToUpdate.Id);
+
+        await CreateReminderJob(appointmentToUpdate, userEmail, userName);
+        if (wantAutoDelete)
+        {
+            await CreateRemoverJob(appointmentToUpdate);
+        }
+    }
+
     private async Task<IScheduler> GetScheduler()
     {
         return scheduler ??= await schedulerFactory.GetScheduler();

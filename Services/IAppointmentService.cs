@@ -8,4 +8,6 @@ public interface IAppointmentService
     Task Create(CreateAppointmentRequest request, string userTimeZone);
     Task<IEnumerable<ReadAppointmentDto>> Get(string userTimeZone);
     Task<ReadAppointmentDto> GetById(int id, string userTimeZone);
+    Task Update(int id, UpdateAppointmentRequest request, string userTimeZone);
+    Task Delete(int id);
 }

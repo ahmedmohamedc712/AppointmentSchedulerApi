@@ -11,7 +11,7 @@ namespace AppointmentScheduler.Controllers
     [Authorize]
     public class AppointmentsController(IAppointmentService service) : ControllerBase
     {
-        public const string TIME_ZONE_HEADER = "X-TimeZone" ;
+        public const string TIME_ZONE_HEADER = "X-TimeZone";
         [HttpPost]
         public async Task<IActionResult> Create(
             CreateAppointmentRequest request,
@@ -38,6 +38,24 @@ namespace AppointmentScheduler.Controllers
         {
             var appointmentDto = await service.GetById(id, userTimeZone);
             return Ok(appointmentDto);
+        }
+
+        [HttpPut("{id}")]
+        public async Task<IActionResult> Update(
+            int id,
+            UpdateAppointmentRequest request,
+            [FromHeader(Name = TIME_ZONE_HEADER)] string userTimeZone
+        )
+        {
+            await service.Update(id, request, userTimeZone);
+            return NoContent();
+        }
+
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> Delete(int id)
+        {
+            await service.Delete(id);
+            return Ok();
         }
     }
 }

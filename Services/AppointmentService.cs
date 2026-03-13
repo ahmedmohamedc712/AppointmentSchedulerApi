@@ -1,4 +1,5 @@
 using System;
+using System.Drawing;
 using AppointmentScheduler.BackgroundJobs;
 using AppointmentScheduler.Data;
 using AppointmentScheduler.Data.DTOs;
@@ -6,6 +7,7 @@ using AppointmentScheduler.Exceptions;
 using AppointmentScheduler.Models;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
+using Org.BouncyCastle.Ocsp;
 using Quartz;
 using TaskScheduler.Services;
 
@@ -14,33 +16,13 @@ namespace AppointmentScheduler.Services;
 public class AppointmentService(AppDbContext context,
     ICurrentUserAccessor currentUserAccessor,
     IUtcLocalConverter utcLocalConverter,
-    IBackgroundJobProvider jobProvider) : IAppointmentService
+    IBackgroundJobProvider jobProvider,
+    IClock clock) : IAppointmentService
 {
     public async Task Create(CreateAppointmentRequest request, string userTimeZone)
     {
-        if (string.IsNullOrWhiteSpace(request.Title) || string.IsNullOrWhiteSpace(request.Description))
-        {
-            throw new BadRequestException("You must provide title and description for the appointment.");
-        }
-
-        var systemClock = SystemClock.Instance;
-        var currentUtc = systemClock.GetCurrentInstant();
-        Instant appointmentDate = utcLocalConverter.ConvertLocalToUtc(request.Date, userTimeZone);
-        if (appointmentDate <= currentUtc)
-        {
-            throw new BadRequestException("Appointment date must be in the future.");
-        }
-
-        Instant appointmentReminder = utcLocalConverter.ConvertLocalToUtc(request.ReminderDate, userTimeZone);
-        if (appointmentReminder <= currentUtc)
-        {
-            throw new BadRequestException("Reminder date must be in the future.");
-        }
-
-        if (appointmentReminder >= appointmentDate)
-        {
-            throw new BadRequestException("Reminder must be before the appointment date.");
-        }
+        var currentUtc = clock.GetCurrentInstant();
+        var (appointmentDate, appointmentReminder) = ValidateAppointmentAndConvertAppointmentDates(request, currentUtc, userTimeZone);
 
         int userId = currentUserAccessor.GetCurrentUserId();
 
@@ -105,5 +87,77 @@ public class AppointmentService(AppDbContext context,
             utcLocalConverter.ConvertUtcToLocal(appointment.Date, userTimeZone),
             utcLocalConverter.ConvertUtcToLocal(appointment.ReminderDate, userTimeZone)
         );
+    }
+
+    public async Task Update(int id, UpdateAppointmentRequest request, string userTimeZone)
+    { 
+        if (id != request.Id)
+            throw new BadRequestException("Id mismatch.");
+
+        var userId = currentUserAccessor.GetCurrentUserId();
+
+        var appointmentToUpdate = await context.Appointments
+            .FirstOrDefaultAsync(x => x.Id == id && x.UserId == userId);
+
+        if (appointmentToUpdate == null)
+            throw new NotFoundException(id);
+
+        var currentUtc = clock.GetCurrentInstant();
+        var (appointmentDate, appointmentReminder) = ValidateAppointmentAndConvertAppointmentDates(request, currentUtc, userTimeZone);
+
+        appointmentToUpdate.Title = request.Title;
+        appointmentToUpdate.Description = request.Description;
+        appointmentToUpdate.UpdatedAt = currentUtc;
+        appointmentToUpdate.Date = appointmentDate;
+        appointmentToUpdate.ReminderDate = appointmentReminder;
+
+        await context.SaveChangesAsync();
+
+        var userEmail = currentUserAccessor.GetCurrentUserEmail();
+        var userName = currentUserAccessor.GetCurrentUserName();
+
+        await jobProvider.RescheduleAppointmentsJobs(appointmentToUpdate, userEmail, userName, request.WantAutoDelete);
+    }
+
+    public async Task Delete(int id)
+    {
+        int userId = currentUserAccessor.GetCurrentUserId();
+        var appointmentToDelete = await context.Appointments
+            .FirstOrDefaultAsync(x => x.Id == id && x.UserId == userId);
+
+        if (appointmentToDelete == null)
+            throw new NotFoundException(id);
+
+        context.Appointments.Remove(appointmentToDelete);
+        await context.SaveChangesAsync();
+
+        await jobProvider.DeleteJobs(appointmentToDelete.Id);
+    }
+
+    private (Instant, Instant) ValidateAppointmentAndConvertAppointmentDates(IAppointmentRequest appointment, Instant currentUtc, string userTimeZone)
+    {
+        if (string.IsNullOrWhiteSpace(appointment.Title) || string.IsNullOrWhiteSpace(appointment.Description))
+        {
+            throw new BadRequestException("You must provide title and description for the appointment.");
+        }
+
+        Instant appointmentDate = utcLocalConverter.ConvertLocalToUtc(appointment.Date, userTimeZone);
+        if (appointmentDate <= currentUtc)
+        {
+            throw new BadRequestException("Appointment date must be in the future.");
+        }
+
+        Instant appointmentReminder = utcLocalConverter.ConvertLocalToUtc(appointment.ReminderDate, userTimeZone);
+        if (appointmentReminder <= currentUtc)
+        {
+            throw new BadRequestException("Reminder date must be in the future.");
+        }
+
+        if (appointmentReminder >= appointmentDate)
+        {
+            throw new BadRequestException("Reminder must be before the appointment date.");
+        }
+
+        return (appointmentDate, appointmentReminder);
     }
 }
