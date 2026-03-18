@@ -14,39 +14,49 @@ namespace AppointmentScheduler.Services;
 public class UsersService(AppDbContext context,
     IPasswordHasher passwordHasher,
     IJwtProvider jwtProvider,
-    ICurrentUserAccessor currentUserAccessor) : IUsersService
+    ICurrentUserAccessor currentUserAccessor,
+    IVerificationService verificationService) : IUsersService
 {
-    public async Task<Response> Signup(SignupRequest request)
+    
+    public async Task Signup(SignupRequest request)
     {
         var isValidEmail = IsValidEmail(request.Email);
-        if(!isValidEmail)
-            throw new BadRequestException("Invalid Email format.");  
-        
-        if(request.Password != request.ConfirmPassword)
+        if (!isValidEmail)
+            throw new BadRequestException("Invalid Email format.");
+
+        if (request.Password != request.ConfirmPassword)
             throw new BadRequestException("Confirm password must match the password.");
 
         var isFound = await context.Users.AnyAsync(x => x.Email == request.Email);
-        if(isFound)
+        if (isFound)
             throw new ConflictException("There is already an account using this Email.");
-        
-        var hashedPassword = passwordHasher.HashPassword(request.Password);
 
-        User user = new()
+        await verificationService.CreateAndSend(request);
+    }
+
+    public async Task<Response> Create(CreateUserRequest createUserRequest)
+    {
+        PendingRegistrationModel pendingModel = verificationService.Get(createUserRequest.Email);
+        if(createUserRequest.VerificationCode != pendingModel.VerificationCode)
+            throw new BadRequestException("Wrong verification code.");
+
+        var newUser = new User()
         {
-            Name = request.Name,
-            Email = request.Email,
-            PasswordHashed = hashedPassword
-        };  
-        await context.Users.AddAsync(user);
+            Name = pendingModel.Name,
+            Email = pendingModel.Email,
+            PasswordHashed = pendingModel.PasswordHashed
+        };
 
-        var jwtToken = jwtProvider.Create(user);
+        await context.Users.AddAsync(newUser);
+
+        var jwtToken = jwtProvider.Create(newUser);
         var refreshToken = jwtProvider.GenerateRefreshToken();
 
         var refreshTokenObj = new RefreshToken()
         {
             Token = refreshToken,
             Expires = DateTime.UtcNow.AddDays(7),
-            User = user
+            User = newUser
         };
 
         await context.RefreshTokens.AddAsync(refreshTokenObj);
@@ -57,11 +67,13 @@ public class UsersService(AppDbContext context,
     public async Task<Response> Login(LoginRequest request)
     {
         var isValidEmail = IsValidEmail(request.Email);
-        if(!isValidEmail)
+        if (!isValidEmail)
             throw new BadRequestException("Invalid Email format.");
-        
-        var user = await context.Users.FirstOrDefaultAsync(x => x.Email == request.Email);
-        if(user == null || !passwordHasher.VerifyPassword(user.PasswordHashed, request.Password))
+
+        var user = await context.Users
+        .AsNoTracking()
+        .FirstOrDefaultAsync(x => x.Email == request.Email);
+        if (user == null || !passwordHasher.VerifyPassword(user.PasswordHashed, request.Password))
         {
             throw new BadRequestException("Invalid Credentials.");
         }
@@ -103,7 +115,7 @@ public class UsersService(AppDbContext context,
     }
     public async Task RevokeRefreshTokens(int userId)
     {
-        if(userId != currentUserAccessor.GetCurrentUserId())
+        if (userId != currentUserAccessor.GetCurrentUserId())
         {
             throw new BadRequestException("You can't do this.");
         }

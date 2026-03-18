@@ -7,7 +7,8 @@ namespace AppointmentScheduler.Services;
 
 public interface IUsersService
 {
-    Task<Response> Signup(SignupRequest request);
+    Task Signup(SignupRequest request);
+    Task<Response> Create(CreateUserRequest createUserRequest);
     Task<Response> Login(LoginRequest request);
     Task<Response> LoginUserWithRefreshToken(string refreshToken);
     Task RevokeRefreshTokens(int userId);

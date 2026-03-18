@@ -4,6 +4,7 @@ using AppointmentScheduler.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.WebUtilities;
 
 namespace AppointmentScheduler.Controllers
 {
@@ -15,10 +16,10 @@ namespace AppointmentScheduler.Controllers
         public sealed record RefreshTokenRequest(string RefreshToken);
 
         [HttpPost("signup")]
-        public async Task<ActionResult<Response>> Signup(SignupRequest request)
+        public async Task<IActionResult> Signup(SignupRequest request)
         {
-            var response = await service.Signup(request);
-            return Ok(response);
+            await service.Signup(request);
+            return Ok();
         }
 
         [HttpPost("login")]
@@ -41,6 +42,13 @@ namespace AppointmentScheduler.Controllers
         {
             await service.RevokeRefreshTokens(userId);
             return NoContent();
+        }
+
+        [HttpPost]
+        public async Task<ActionResult<Response>> CreateUser(CreateUserRequest request)
+        {
+            Response response = await service.Create(request);
+            return response;
         }
     }
 }

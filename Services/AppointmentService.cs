@@ -7,7 +7,6 @@ using AppointmentScheduler.Exceptions;
 using AppointmentScheduler.Models;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
-using Org.BouncyCastle.Ocsp;
 using Quartz;
 using TaskScheduler.Services;
 
@@ -53,10 +52,11 @@ public class AppointmentService(AppDbContext context,
     {
         int userId = currentUserAccessor.GetCurrentUserId();
         var appointments = await context.Appointments
+            .AsNoTracking()
             .Where(x => x.UserId == userId)
             .ToListAsync();
 
-        IEnumerable<ReadAppointmentDto> readAppointmentDtos = appointments.Select(x => 
+        IEnumerable<ReadAppointmentDto> readAppointmentDtos = appointments.Select(x =>
         new ReadAppointmentDto(
             x.Id,
             x.Title,
@@ -74,11 +74,12 @@ public class AppointmentService(AppDbContext context,
     {
         int userId = currentUserAccessor.GetCurrentUserId();
         var appointment = await context.Appointments
+            .AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == id && x.UserId == userId);
-        
-        if(appointment == null)
+
+        if (appointment == null)
             throw new NotFoundException(id);
-        
+
         return new ReadAppointmentDto(
             appointment.Id,
             appointment.Title,
@@ -90,7 +91,7 @@ public class AppointmentService(AppDbContext context,
     }
 
     public async Task Update(int id, UpdateAppointmentRequest request, string userTimeZone)
-    { 
+    {
         if (id != request.Id)
             throw new BadRequestException("Id mismatch.");
 

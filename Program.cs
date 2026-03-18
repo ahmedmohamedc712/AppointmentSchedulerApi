@@ -47,13 +47,16 @@ builder.Services.AddQuartzHostedService(q =>
 });
 
 builder.Services.AddScoped<IUsersService, UsersService>();
-builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
+builder.Services.AddSingleton<IPasswordHasher, PasswordHasher>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IAppointmentService, AppointmentService>();
 builder.Services.AddScoped<ICurrentUserAccessor, CurrentUserAccessor>();
 builder.Services.AddSingleton<IUtcLocalConverter, UtcLocalConverter>();
 builder.Services.AddSingleton<IBackgroundJobProvider, BackgroundJobProvider>();
 builder.Services.AddSingleton<IClock>(NodaTime.SystemClock.Instance);
+
+builder.Services.AddMemoryCache();
+builder.Services.AddSingleton<IVerificationService, VerificationService>();
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
