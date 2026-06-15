@@ -97,14 +97,14 @@ public class AppointmentService(AppDbContext context,
 
         var userId = currentUserAccessor.GetCurrentUserId();
 
+        var currentUtc = clock.GetCurrentInstant();
+        var (appointmentDate, appointmentReminder) = ValidateAppointmentAndConvertAppointmentDates(request, currentUtc, userTimeZone);
+
         var appointmentToUpdate = await context.Appointments
             .FirstOrDefaultAsync(x => x.Id == id && x.UserId == userId);
 
         if (appointmentToUpdate == null)
             throw new NotFoundException(id);
-
-        var currentUtc = clock.GetCurrentInstant();
-        var (appointmentDate, appointmentReminder) = ValidateAppointmentAndConvertAppointmentDates(request, currentUtc, userTimeZone);
 
         appointmentToUpdate.Title = request.Title;
         appointmentToUpdate.Description = request.Description;
@@ -156,7 +156,7 @@ public class AppointmentService(AppDbContext context,
 
         if (appointmentReminder >= appointmentDate)
         {
-            throw new BadRequestException("Reminder must be before the appointment date.");
+            throw new BadRequestException("Reminder date must be before the appointment date.");
         }
 
         return (appointmentDate, appointmentReminder);
